@@ -80,11 +80,19 @@ function stop(e) {
             let $ulVotes = $('#results-ul-votes');
             $ulVotes.empty();
             for (const property in data['votes']) {
-                $ulVotes.append(`<li class="collection-item">${property} ${data['votes'][property]}</li>`);
+                $ulVotes.append(`<li class="collection-item"><b>${property}
+                    <span class="badge">${data['votes'][property]}</span>
+                </b></li>`);
             };
-            $('#results-li-min').html(`<b>Min ${data['min']}</b>`);
-            $('#results-li-average').html(`<b>Average ${data['average']}</b>`);
-            $('#results-li-max').html(`<b>Max ${data['max']}</b>`);
+            $('#results-li-min').html(
+                `<b>Min<span class="badge">${data['min']}</span></b>`
+            );
+            $('#results-li-average').html(
+                `<b>Average<span class="badge">${data['average']}</span></b>`
+            );
+            $('#results-li-max').html(
+                `<b>Max<span class="badge">${data['max']}</span></b>`
+            );
             instance.open();
         };
         $button.text('START');
