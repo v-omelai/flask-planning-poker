@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block style %}
+.aka > div {
+    padding: 5px !important;
+    border-radius: 5px;
+}
+{% endblock %}
+
+{% block content %}
+<form id="vote" action="/vote/" method="post">
+    <div class="row first">
+        <div class="input-field col s12">
+            <i class="material-icons prefix">account_circle</i>
+            <input type="text" id="name" name="name" class="validate" required>
+            <label for="name">Your name</label>
+        </div>
+    </div>
+    <div class="row aka">
+        <div class="col s12 valign-wrapper center-align z-depth-1 deep-orange lighten-4 blue-grey-text text-darken-4">
+            <span class="col s12">&nbsp;<b>Also known as {{ alternative }}</b>&nbsp;</span>
+        </div>
+    </div>
+    <div class="row">
+        <div class="input-field col s12">
+            <input type="number" id="value" name="value" class="validate" required>
+            <label for="value">Value</label>
+        </div>
+    </div>
+    <div class="row last">
+        <div class="input-field col s12">
+            <select id="unit" name="unit">
+                <option value="minutes">Minute</option>
+                <option value="hours">Hour</option>
+                <option value="days">Day</option>
+                <option value="weeks">Week</option>
+            </select>
+            <label>Unit of measurement</label>
+        </div>
+    </div>
+    <input type="hidden" name="key" value="{{ key }}">
+    <input type="hidden" name="alternative" value="{{ alternative }}">
+</form>
+{% endblock %}
+
+{% block action %}
+<button class="btn waves-effect waves-light" type="submit" form="vote">
+    VOTE
+</button>
+{% endblock %}
+
+{% block script %}
+$(document).ready(() => {
+    let instances = M.FormSelect.init($('select').get(0));
+    $('form').submit((e) => {
+        let $form = $(e.currentTarget);
+        $.ajax({
+            type: $form.attr('method'),
+            url: $form.attr('action'),
+            data: $form.serialize()
+        }).done(() => {
+            M.toast({html: 'Yeah! You voted :)', classes: 'rounded'});
+        }).fail(() => {
+            M.toast({html: 'Oops! Something went wrong :(', classes: 'rounded'});
+        });
+        e.preventDefault();
+    });
+});
+{% endblock %}
