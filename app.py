@@ -1,97 +1,77 @@
 import datetime
+import json
 import os
 import uuid
 
 import randomname
+import redis
 from flask import Flask, redirect, render_template, url_for, request
-
-from helpers import Session
 
 
 app = Flask(__name__)
-session = Session(url=os.getenv('REDIS_URL'))  # sudo service redis-server start
+r = redis.Redis.from_url(url=os.getenv('REDIS_URL', 'redis://127.0.0.1:6379'))
 
 
 @app.route('/', methods=['GET'])
 def home():
-    return redirect(url_for('session_'))
+    return redirect(url_for('session'))
 
 
 @app.route('/session/', methods=['GET'])
 @app.route('/session/<key>', methods=['GET'])
-def session_(key=None):
-    if key is None or not session.exists(key):
-        key, creator = str(uuid.uuid4()), str(uuid.uuid4())
-        session.set(key, {'vote': {'started': None, 'creator': creator, 'participants': {}}})
-        return render_template('creator.html', key=key, creator=creator,
-                               link=url_for('session_', key=key))
-    else:
-        # https://github.com/beasteers/randomname
-        alternative = randomname.get_name(
-            adj=('colors', ), noun=('coding', ), sep=' '
-        ).title()
-        return render_template('invited.html', key=key, alternative=alternative)
+def session(key=None):
+    if key is None or not r.exists(key):
+        key = str(uuid.uuid4())
+        r.set(key, json.dumps({'started': None, 'participants': {}}))
+        return render_template('creator.html', key=key, link=url_for('session', key=key))
+    alternative = randomname.get_name(adj=('colors', ), noun=('coding', ), sep=' ').title()
+    return render_template('invited.html', key=key, alternative=alternative)
 
 
 @app.route('/vote/', methods=['POST'])
 def vote():
-    form = {**request.form}
-    if all(
-        k in form.keys() for k in ('key', 'name', 'alternative', 'value', 'unit')
-    ):
-        key, voter = form['key'], f'{form["name"]} aka {form["alternative"]}'
-        td = datetime.timedelta(**{form['unit']: int(form['value'])})
-        dt = datetime.datetime.now(datetime.timezone.utc)
-        current = session.get(key)
-        current['vote']['participants'][voter] = (td, dt)
-        session.set(key, current)
-        return 'OK', 200
-    return 'Bad Request', 400
+    form = request.form
+    key, name, alternative, value = form['key'], form['name'], form['alternative'], form['value']
+    voted = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    data = json.loads(r.get(key))
+    data['participants'][f'{name} aka {alternative}'] = (value, voted)
+    r.set(key, json.dumps(data))
+    return 'OK', 200
 
 
 @app.route('/start/', methods=['POST'])
 def start():
-    form = {**request.form}
-    if all(
-        k in form.keys() for k in ('key', 'creator')
-    ):
-        key, creator = form['key'], form['creator']
-        current = session.get(key)
-        if current['vote']['creator'] != creator:
-            return 'Forbidden', 403
-        current['vote']['started'] = datetime.datetime.now(datetime.timezone.utc)
-        session.set(key, current)
-        return 'OK', 200
-    return 'Bad Request', 400
+    form = request.form
+    key = form['key']
+    started = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    r.set(key, json.dumps({'started': started, 'participants': {}}))
+    return 'OK', 200
 
 
 @app.route('/stop/', methods=['POST'])
 def stop():
-    form = {**request.form}
-    if all(
-        k in form.keys() for k in ('key', 'creator')
-    ):
-        key, creator = form['key'], form['creator']
-        current = session.get(key)
-        if current['vote']['creator'] != creator:
-            return 'Forbidden', 403
-        started = current['vote']['started']
-        finished = datetime.datetime.now(datetime.timezone.utc)
-        participants = current['vote']['participants']
-        new = {}
-        for voter in participants.keys():
-            td, dt = participants[voter]
-            if started < dt < finished:
-                new[voter] = td, dt
-        current['vote']['participants'] = new
-        session.set(key, current)
+    form = request.form
+    key = form['key']
 
-        results = {}
-        if new:
-            tds = [td for td, dt in new.values()]
-            results['votes'] = {voter: str(td) for voter, (td, dt) in new.items()}
-            results['min'] = str(min(tds))
-            results['max'] = str(max(tds))
-            results['average'] = str(sum(tds, datetime.timedelta()) / len(tds))
-        return results, 200
-    return 'Bad Request', 400
+    data = json.loads(r.get(key))
+    participants = data['participants']
+
+    started = datetime.datetime.fromisoformat(data['started'])
+    finished = datetime.datetime.now(datetime.timezone.utc)
+
+    results = {'votes': {}}
+    values = set()
+
+    for participant, (value, voted) in participants.items():
+        voted = datetime.datetime.fromisoformat(voted)
+        if started < voted < finished:
+            value = float(value)
+            results['votes'][participant] = value
+            values.add(value)
+
+    if values:
+        results['min'] = min(values)
+        results['max'] = max(values)
+        results['average'] = round((min(values) + max(values)) / 2, 2)
+
+    return results, 200

@@ -12,7 +12,7 @@
     <div class="row first">
         <div class="input-field col s12">
             <i class="material-icons prefix">account_circle</i>
-            <input type="text" id="name" name="name" class="validate" required>
+            <input type="text" id="name" name="name" class="validate" maxlength="50" required>
             <label for="name">Your name</label>
         </div>
     </div>
@@ -21,21 +21,10 @@
             <span class="col s12">&nbsp;<b>Also known as {{ alternative }}</b>&nbsp;</span>
         </div>
     </div>
-    <div class="row">
-        <div class="input-field col s12">
-            <input type="number" id="value" name="value" class="validate" required>
-            <label for="value">Value</label>
-        </div>
-    </div>
     <div class="row last">
         <div class="input-field col s12">
-            <select id="unit" name="unit">
-                <option value="minutes">Minute</option>
-                <option value="hours">Hour</option>
-                <option value="days">Day</option>
-                <option value="weeks">Week</option>
-            </select>
-            <label>Unit of measurement</label>
+            <input type="number" id="value" name="value" class="validate" step="0.5" min="0" max="100" required>
+            <label for="value">Value</label>
         </div>
     </div>
     <input type="hidden" name="key" value="{{ key }}">
@@ -51,7 +40,8 @@
 
 {% block script %}
 $(document).ready(() => {
-    let instances = M.FormSelect.init($('select').get(0));
+    M.FormSelect.init($('select').get(0));
+    // M.CharacterCounter.init($('input#name').get(0));
     $('form').submit((e) => {
         let $form = $(e.currentTarget);
         $.ajax({
