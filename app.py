@@ -25,7 +25,7 @@ def session(key=None):
         r.set(key, json.dumps({'started': None, 'participants': {}}))
         return render_template('creator.html', key=key, link=url_for('session', key=key))
     alternative = randomname.get_name(adj=('colors', ), noun=('coding', ), sep=' ').title()
-    return render_template('invited.html', key=key, alternative=alternative)
+    return render_template('participant.html', key=key, alternative=alternative)
 
 
 @app.route('/vote/', methods=['POST'])
