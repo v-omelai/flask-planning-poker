@@ -21,7 +21,7 @@
 
 {% block action %}
 <div class="row first">
-    <button class="btn waves-effect waves-light blue-grey lighten-1" id="share">COPY</button>
+    <button class="btn waves-effect waves-light blue-grey lighten-1" id="copy">COPY</button>
 </div>
 <div class="row last">
     <button class="btn waves-effect waves-light" type="submit" form="timer">START</button>
@@ -109,7 +109,7 @@ function stop(e) {
 $(document).ready(() => {
     let instance = M.Modal.init($('#results-modal').get(0));
     $('form').submit(start);
-    $('button#share').click(() => {
+    $('button#copy').click(() => {
         navigator.clipboard.writeText(window.location.origin + '{{ link }}');
         M.toast({html: 'Link is copied to clipboard', classes: 'rounded'});
     });

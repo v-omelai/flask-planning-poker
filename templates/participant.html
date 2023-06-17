@@ -40,8 +40,6 @@
 
 {% block script %}
 $(document).ready(() => {
-    M.FormSelect.init($('select').get(0));
-    // M.CharacterCounter.init($('input#name').get(0));
     $('form').submit((e) => {
         let $form = $(e.currentTarget);
         $.ajax({
