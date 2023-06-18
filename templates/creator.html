@@ -1,30 +1,27 @@
 {% extends "base.html" %}
 
 {% block style %}
-.share > div {
+.link > div {
     padding: 5px !important;
     border-radius: 5px;
 }
 {% endblock %}
 
 {% block content %}
-<div class="row single share">
+<div class="row single link">
     <div class="col s12 valign-wrapper center-align z-depth-1 blue lighten-5">
-        <i class="material-icons prefix">share</i>
-        <a href="{{ link }}">&nbsp;&nbsp;<b>Share this link</b>&nbsp;&nbsp;</a>
+        <i class="material-icons prefix">link</i>
+        <a href="https://github.com/v-omelai/planning-poker">&nbsp;&nbsp;<b>GitHub Repository</b>&nbsp;&nbsp;</a>
     </div>
 </div>
-<form id="timer" method="post">
-    <input type="hidden" name="key" value="{{ key }}">
-</form>
 {% endblock %}
 
 {% block action %}
 <div class="row first">
-    <button class="btn waves-effect waves-light blue-grey lighten-1" id="copy">COPY</button>
+    <button class="btn waves-effect waves-light" id="copy">COPY</button>
 </div>
 <div class="row last">
-    <button class="btn waves-effect waves-light" type="submit" form="timer">START</button>
+    <button class="btn waves-effect waves-light disabled" id="timer">START</button>
 </div>
 {% endblock %}
 
@@ -47,71 +44,82 @@
 
 {% block script %}
 function start(e) {
-    let instance = M.Modal.getInstance($('#results-modal').get(0));
-    let $form = $(e.currentTarget);
-    let $button = $(':submit').closest('[form=' + $form.attr('id') + ']');
-    $form.off('submit', start);
-    $.ajax({
-        url: '/start/',
-        type: $form.attr('method'),
-        data: $form.serialize(),
-    }).done((data) => {
-        M.toast({html: 'Voting is started :)', classes: 'rounded'});
-        $button.text('STOP');
-        $form.on('submit', stop);
-    }).fail(() => {
-        M.toast({html: 'Oops! Something went wrong :(', classes: 'rounded'});
-        $form.on('submit', start);
-    });
-    e.preventDefault();
+    $.post('/start/', {'key': e.data.key})
+        .done(() => {
+            e.data.$btnTimer.off('click', start);
+            e.data.$btnTimer.on('click', e.data, stop);
+            e.data.$btnTimer.text('STOP');
+        })
+        .fail(() => {
+            M.toast({html: 'Oops! Something went wrong :(', classes: 'rounded'});
+        });
 };
 
 function stop(e) {
-    let instance = M.Modal.getInstance($('#results-modal').get(0));
-    let $form = $(e.currentTarget);
-    let $button = $(':submit').closest('[form=' + $form.attr('id') + ']');
-    $form.off('submit', stop);
-    $.ajax({
-        url: '/stop/',
-        type: $form.attr('method'),
-        data: $form.serialize(),
-    }).done((data) => {
-        if ($.isEmptyObject(data['votes'])) {
-            M.toast({html: 'Voting is over. No results :(', classes: 'rounded'});
-        } else {
-            let $ulVotes = $('#results-ul-votes');
-            $ulVotes.empty();
-            for (const property in data['votes']) {
-                $ulVotes.append(`<li class="collection-item"><b>${property}
-                    <span class="badge">${data['votes'][property]}</span>
-                </b></li>`);
+   $.post('/stop/', {'key': e.data.key})
+        .done((data) => {
+            e.data.$btnTimer.off('click', stop);
+            e.data.$btnTimer.on('click', e.data, start);
+            e.data.$btnTimer.text('START');
+
+            if ($.isEmptyObject(data['votes'])) {
+                M.toast({html: 'Voting is over. No results :(', classes: 'rounded'});
+            } else {
+                e.data.$ulVotes.empty();
+                for (const property in data['votes']) {
+                    e.data.$ulVotes.append(`<li class="collection-item"><b>${property}
+                        <span class="badge">${data['votes'][property]}</span>
+                    </b></li>`);
+                };
+                $('#results-li-min').html(
+                    `<b>Min<span class="badge">${data['min']}</span></b>`
+                );
+                $('#results-li-average').html(
+                    `<b>Average<span class="badge">${data['average']}</span></b>`
+                );
+                $('#results-li-max').html(
+                    `<b>Max<span class="badge">${data['max']}</span></b>`
+                );
+                e.data.modal.open();
             };
-            $('#results-li-min').html(
-                `<b>Min<span class="badge">${data['min']}</span></b>`
-            );
-            $('#results-li-average').html(
-                `<b>Average<span class="badge">${data['average']}</span></b>`
-            );
-            $('#results-li-max').html(
-                `<b>Max<span class="badge">${data['max']}</span></b>`
-            );
-            instance.open();
-        };
-        $button.text('START');
-        $form.on('submit', start);
-    }).fail(() => {
-        M.toast({html: 'Oops! Something went wrong :(', classes: 'rounded'});
-        $form.on('submit', stop);
-    });
-    e.preventDefault();
+        })
+        .fail(() => {
+            M.toast({html: 'Oops! Something went wrong :(', classes: 'rounded'});
+        });
+};
+
+function copy(link) {
+    navigator.clipboard.writeText(window.location.origin + link);
+    M.toast({html: 'Link is copied to clipboard', classes: 'rounded'});
 };
 
 $(document).ready(() => {
-    let instance = M.Modal.init($('#results-modal').get(0));
-    $('form').submit(start);
-    $('button#copy').click(() => {
-        navigator.clipboard.writeText(window.location.origin + '{{ link }}');
-        M.toast({html: 'Link is copied to clipboard', classes: 'rounded'});
+    const $btnCopy = $('button#copy');
+    const $btnTimer = $('button#timer');
+    const $modal = $('div#results-modal');
+    const $ulVotes = $('ul#results-ul-votes');
+
+    const modal = M.Modal.init($modal.get(0));
+
+    let key;
+    let link;
+    
+    $btnCopy.click(() => {
+        if (key && link) {
+            copy(link);
+        } else {
+            $.post('/session/create/')
+                .done((data) => {
+                    key = data.key;
+                    link = data.link;
+                    $btnTimer.removeClass('disabled');
+                    $btnTimer.click({key, modal, $btnTimer, $ulVotes}, start);
+                    copy(link);
+                })
+                .fail(() => {
+                    M.toast({html: 'Oops! Something went wrong :(', classes: 'rounded'});
+                });
+        };
     });
 });
 {% endblock %}
