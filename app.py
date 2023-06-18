@@ -21,11 +21,16 @@ def home():
 @app.route('/session/<key>', methods=['GET'])
 def session(key=None):
     if key is None or not r.exists(key):
-        key = str(uuid.uuid4())
-        r.set(key, json.dumps({'started': None, 'participants': {}}))
-        return render_template('creator.html', key=key, link=url_for('session', key=key))
+        return render_template('creator.html')
     alternative = randomname.get_name(adj=('colors', ), noun=('coding', ), sep=' ').title()
     return render_template('participant.html', key=key, alternative=alternative)
+
+
+@app.route('/session/create/', methods=['POST'])
+def create():
+    key = str(uuid.uuid4())
+    r.set(key, json.dumps({'started': None, 'participants': {}}))
+    return {'key': key, 'link': url_for('session', key=key)}, 200
 
 
 @app.route('/vote/', methods=['POST'])
