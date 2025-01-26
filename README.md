@@ -1,4 +1,4 @@
-# planning-poker
+## Overview
 
 **Planning Poker (Scrum Poker)** is a popular method for estimating tasks in Agile software development teams. It is a collaborative and gamified approach where team members use a deck of cards with numerical values to assign estimates to different tasks.
 
